@@ -14,6 +14,10 @@ This is a simple Auto Clicker application for Windows built with Python and C. I
 - Start and stop clicking with a hotkey (F6).
 - Built-in GUI using the CustomTkinter library.
 
+## Instructions
+1. **Open `autoclicker_gui.exe`.**
+2. **Fill out whatever you need and press F6.**
+
  ## Building from scratch
 First download this repository as a .zip file.
 
