@@ -86,6 +86,7 @@ app = ctk.CTk()
 app.title("Auto Clicker")
 app.geometry("400x450")
 app.configure(bg='#333')
+app.iconbitmap("icon.ico")
 
 interval_label = ctk.CTkLabel(app, text="Interval (ms):", text_color="#ff6b00")
 interval_label.pack(pady=(20, 5))
