@@ -15,8 +15,9 @@ This is a simple Auto Clicker application for Windows built with Python and C. I
 - Built-in GUI using the CustomTkinter library.
 
 ## Instructions
-1. **Open `autoclicker_gui.exe`.**
-2. **Fill out whatever you need and press F6.**
+1. **Download both executables from the `Releases tab`.**
+2. **Open `autoclicker_gui.exe`.**
+3. **Fill out whatever you need and press F6.**
 
  ## Building from scratch
 First download this repository as a .zip file.
