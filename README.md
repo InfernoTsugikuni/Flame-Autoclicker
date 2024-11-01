@@ -61,4 +61,4 @@ Save this as a .bat file and run it. This is only for using the .py file if your
 gcc autoclicker.c -o autoclicker.exe
 ```
 
-**at the time of making this its 1 am so i will fix some bugs when i wake up**
+# THERE ARE SOME BUGS THAT I WILL FIX
