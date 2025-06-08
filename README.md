@@ -1,64 +1,31 @@
-# LICENSE
-Read `LICENSE` for more information. This software is licensed under the MIT License.
+# FlameAutoclicker
 
-# Auto Clicker
-
-This is a simple Auto Clicker application for Windows built with Python and C. It features a GUI for easy interaction and allows users to automate mouse clicks at customizable intervals.
+**Simple and advanced Windows autoclicker** written in C++ with Qt6.
 
 ## Features
 
-- Set a custom click interval (in milliseconds).
-- Specify the number of clicks (0 for infinite).
-- Toggle double-clicking functionality.
-- Easily set the position of the mouse cursor for clicking.
-- Start and stop clicking with a hotkey (F6).
-- Built-in GUI using the CustomTkinter library.
+✅ Hotkey-based activation  
+✅ Safe intervals (min 50ms)  
+✅ Position picker  
+✅ Click count or duration-based stopping  
+✅ Double click and right click support  
+✅ Native Windows API integration  
 
-## Instructions
-1. **Download both executables from the `Releases` tab.**
-2. **Open `autoclicker_gui.exe`.**
-3. **Fill out whatever you need and press F6.**
+## Install instructions
+Go to the releases tab and open FlameAutoclickerInstaller.exe
+Proceed with the instructions, you should have a shortcut on your desktop.
 
- ## Building from scratch
-First download this repository as a .zip file.
+## Build Instructions
 
- **Requirements**
-
-- Python 3.x
-- GCC (C compiler for Windows)
-  
-You can install the required packages via pip:
+- Qt 6.x (tested with 6.5+)
+- CMake 3.20+
+- Visual Studio or MinGW
 
 ```bash
-@echo off
-SETLOCAL
-
-REM Name of your virtual enviroment
-SET VENV=myenv
-
-IF NOT EXIST %VENV% (
-    python -m venv %VENV%
-)
-
-CALL %VENV%\Scripts\activate.bat
-
-pip install -r requirements.txt
-
-IF ERRORLEVEL 1 (
-    echo Compilation failed.
-    pause
-    exit /b 1
-)
-
-python autoclicker_gui.py
-
-pause
-ENDLOCAL
+mkdir build
+cd build
+cmake ..
+cmake --build . --config Release
 ```
-Save this as a .bat file and run it. This is only for using the .py file if your AntiVirus detects the prebuilt binary as malware because of it being compiled using PyInstaller. For compiling the autoclicker.c file use this command:
-
-```bash
-gcc autoclicker.c -o autoclicker.exe
-```
-
-# THERE ARE SOME BUGS THAT I WILL FIX
+## Warning
+**This tool is provided for educational purposes only. Using it in games may violate terms of service.**
