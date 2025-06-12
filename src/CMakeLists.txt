@@ -35,13 +35,12 @@ set(PROJECT_SOURCES
 file(COPY ${CMAKE_SOURCE_DIR}/assets DESTINATION ${CMAKE_BINARY_DIR})
 
 # Create main executable
-if (QT_VERSION_MAJOR GREATER_EQUAL 6)
-    qt_add_executable(FlameAutoclicker MANUAL_FINALIZATION ${PROJECT_SOURCES}
-        hotkeysettingswindow.h
-        hotkeysettingswindow.cpp)
-else()
-    add_executable(FlameAutoclicker ${PROJECT_SOURCES})
-endif()
+qt_add_executable(FlameAutoclicker MANUAL_FINALIZATION
+    ${PROJECT_SOURCES}
+    hotkeysettingswindow.h
+    hotkeysettingswindow.cpp
+    assets/icon.rc
+)
 
 # Link Qt libraries using keyword signature for Qt6 compatibility
 target_link_libraries(FlameAutoclicker PRIVATE

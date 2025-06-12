@@ -72,7 +72,7 @@ QString hotkeyString(const Hotkey& hotkey) {
 
 InputWidget::InputWidget(QWidget* parent) : QWidget(parent) {
     // Initialize all member variables first
-    m_currentHotkey = {true, true, false, false, VK_SNAPSHOT}; // Default: Ctrl+Alt+Print Screen
+    m_currentHotkey = {false, false, false, false, VK_F6}; // Default: F6
     m_isActive = false;
     m_hotkeyRegistered = false;
     m_targetPos = QPoint(0, 0);
