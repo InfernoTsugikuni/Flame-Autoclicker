@@ -1,5 +1,3 @@
-# WHY DID IT NOT COPY THE DLLS I GOTTA REWRITE THE NSI SCRIPT
-
 # FlameAutoclicker
 
 **Simple and advanced Windows autoclicker** written in C++ with Qt6.
