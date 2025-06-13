@@ -5,7 +5,7 @@
 ## Features
 
 ✅ Hotkey-based activation  
-✅ Safe intervals (min 50ms)  
+✅ Safe intervals (min 10ms)  
 ✅ Position picker  
 ✅ Click count or duration-based stopping  
 ✅ Double click and right click support  
