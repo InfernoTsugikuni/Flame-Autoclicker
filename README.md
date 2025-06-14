@@ -29,3 +29,6 @@ cmake --build . --config Release
 ```
 ## Warning
 **This tool is provided for educational purposes only. Using it in games may violate terms of service.**
+
+## Licensing
+**This app uses the MIT license, with Qt under LGPL v3**
