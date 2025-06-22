@@ -1,8 +1,8 @@
 ; NSIS Script for FlameAutoclicker with Dynamic Admin/User Installation Support
 !define PRODUCT_NAME "FlameAutoclicker"
 !define PRODUCT_VERSION "1.0.2"
-!define PRODUCT_PUBLISHER "Your Company"
-!define PRODUCT_WEB_SITE "http://www.yourwebsite.com"
+!define PRODUCT_PUBLISHER "Inferno Tsugikuni"
+!define PRODUCT_WEB_SITE "https://infernotsugikuni.work/autoclicker"
 !define PRODUCT_DIR_REGKEY "Software\Microsoft\Windows\CurrentVersion\App Paths\FlameAutoclicker.exe"
 !define PRODUCT_UNINST_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}"
 !define PRODUCT_UNINST_ROOT_KEY "HKLM"
