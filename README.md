@@ -2,6 +2,8 @@
 
 **A simple Windows autoclicker** written in C++ with Qt6.
 
+# UNSTABLE, CRASHING ISSUES, MAINLY WHEN TRYING TO CHANGE THE HOTKEY, FIXES COMING LATER THIS YEAR (hopefully)
+
 ## Features
 
 ✅ Hotkey-based activation  
@@ -32,4 +34,5 @@ cmake --build . --config Release
 
 ## Licensing
 **This app uses the MIT license, with Qt under LGPL v3**
+
 
