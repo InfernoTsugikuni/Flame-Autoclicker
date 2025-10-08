@@ -1,6 +1,6 @@
 # FlameAutoclicker
 
-**Simple and advanced Windows autoclicker** written in C++ with Qt6.
+**A simple Windows autoclicker** written in C++ with Qt6.
 
 ## Features
 
@@ -32,3 +32,4 @@ cmake --build . --config Release
 
 ## Licensing
 **This app uses the MIT license, with Qt under LGPL v3**
+
