@@ -141,7 +141,6 @@ Section "MainSection" SEC01
   File "build\Qt6Core.dll"
   File "build\Qt6Gui.dll"
   File "build\Qt6Network.dll"
-  File "build\Qt6Pdf.dll"
   File "build\Qt6Svg.dll"
   File "build\Qt6Widgets.dll"
   

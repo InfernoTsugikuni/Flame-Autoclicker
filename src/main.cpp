@@ -25,9 +25,9 @@ int main(int argc, char *argv[]) {
     config.showCloseButton = true;
 
     config.minimizeIcon = ":titlebar/Minimize.png";
-    config.minimizeHoverIcon = "assets/MinimizeHover.png";
-    config.closeIcon = "assets/Close.png";
-    config.closeHoverIcon = "assets/CloseHover.png";
+    config.minimizeHoverIcon = ":titlebar/MinimizeHover.png";
+    config.closeIcon = ":titlebar/Close.png";
+    config.closeHoverIcon = ":titlebar/CloseHover.png";
 
     MainWindow customWindow(nullptr, config);
     customWindow.show();
