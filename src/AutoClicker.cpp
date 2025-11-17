@@ -44,7 +44,7 @@ AutoClicker::~AutoClicker() {
 
 void AutoClicker::setInterval(qint64 ms) {
     // Conservative bounds checking
-    const int MIN_INTERVAL = 10;  // 10ms minimum to prevent system overload
+    const int MIN_INTERVAL = 5;  // 10ms minimum to prevent system overload
     const int MAX_INTERVAL = 3600000; // 1 hour max
 
     // Ensure we don't overflow when casting
@@ -185,7 +185,6 @@ void AutoClicker::performClick() {
         return;
     }
 
-
     // Check duration limit
     if (m_duration > 0 && m_runtime.hasExpired(m_duration)) {
         stop();
@@ -200,171 +199,128 @@ void AutoClicker::performClick() {
         return;
     }
 
-    try {
-        // Check click limit first
-        if (m_remainingClicks == 0) {
+    // REMOVED: try-catch block
+
+    QPoint clickPos;
+    if (m_useDynamicPosition) {
+        // Get current cursor position
+        POINT pt;
+        if (!GetCursorPos(&pt)) {
+            DWORD error = GetLastError();
+            qWarning() << "Failed to get cursor position. Error:" << error;
             stop();
-            emit finished();
+            emit this->error("Failed to get cursor position");
             return;
         }
-
-        QPoint clickPos;
-        if (m_useDynamicPosition) {
-            // Get current cursor position
-            POINT pt;
-            if (!GetCursorPos(&pt)) {
-                DWORD error = GetLastError();
-                qWarning() << "Failed to get cursor position. Error:" << error;
-                stop();
-                emit this->error("Failed to get cursor position");
-                return;
-            }
-            clickPos = QPoint(pt.x, pt.y);
-        } else {
-            clickPos = m_position;
-        }
-
-        qDebug() << "Performing click at:" << clickPos << "Remaining:" << m_remainingClicks;
-
-        // Perform Windows click
-        bool success = performWindowsClick(clickPos.x(), clickPos.y(), m_rightClick, m_doubleClick);
-
-        if (!success) {
-            qWarning() << "Windows click failed";
-            stop();
-            emit error("Click operation failed");
-            return;
-        }
-
-        // Decrement remaining clicks
-        if (m_remainingClicks > 0) {
-            m_remainingClicks--;
-        }
-
-        emit clickPerformed(clickPos);
-
-    } catch (const std::exception& e) {
-        qCritical() << "Exception in performClick:" << e.what();
-        stop();
-        emit error(QString("Click error: %1").arg(e.what()));
-    } catch (...) {
-        qCritical() << "Unknown exception in performClick";
-        stop();
-        emit error("Unknown click error occurred");
+        clickPos = QPoint(pt.x, pt.y);
+    } else {
+        clickPos = m_position;
     }
+
+    qDebug() << "Performing click at:" << clickPos << "Remaining:" << m_remainingClicks;
+
+    // Perform Windows click
+    bool success = performWindowsClick(clickPos.x(), clickPos.y(), m_rightClick, m_doubleClick);
+
+    if (!success) {
+        qWarning() << "Windows click failed";
+        stop();
+        emit error("Click operation failed");
+        return;
+    }
+
+    // Decrement remaining clicks
+    if (m_remainingClicks > 0) {
+        m_remainingClicks--;
+    }
+
+    emit clickPerformed(clickPos);
 }
 
 bool AutoClicker::performWindowsClick(int x, int y, bool rightClick, bool doubleClick) {
-    try {
-        // Validate coordinates first
-        int screenWidth = GetSystemMetrics(SM_CXSCREEN);
-        int screenHeight = GetSystemMetrics(SM_CYSCREEN);
+    // REMOVED: try-catch block
 
-        if (x < 0 || y < 0 || x >= screenWidth || y >= screenHeight) {
-            qWarning() << "Click coordinates out of screen bounds:" << x << "," << y;
-            return false;
-        }
+    // Validate coordinates first
+    int screenWidth = GetSystemMetrics(SM_CXSCREEN);
+    int screenHeight = GetSystemMetrics(SM_CYSCREEN);
 
-        // Save original cursor position
-        POINT originalPos;
-        if (!GetCursorPos(&originalPos)) {
-            DWORD error = GetLastError();
-            qWarning() << "Failed to get cursor position. Error:" << error;
-            return false;
-        }
-
-        // Use modern SendInput instead of deprecated mouse_event
-        INPUT inputs[4] = {}; // Max 4 for double-click
-        int inputCount = 0;
-
-        // Move cursor to target position first
-        if (!SetCursorPos(x, y)) {
-            DWORD error = GetLastError();
-            qWarning() << "Failed to set cursor position. Error:" << error;
-            return false;
-        }
-
-        // Small delay to ensure cursor movement
-        Sleep(10);
-
-        // Prepare mouse input events
-        DWORD downFlag = rightClick ? MOUSEEVENTF_RIGHTDOWN : MOUSEEVENTF_LEFTDOWN;
-        DWORD upFlag = rightClick ? MOUSEEVENTF_RIGHTUP : MOUSEEVENTF_LEFTUP;
-
-        // First click down
-        inputs[inputCount].type = INPUT_MOUSE;
-        inputs[inputCount].mi.dwFlags = downFlag;
-        inputs[inputCount].mi.dx = 0;
-        inputs[inputCount].mi.dy = 0;
-        inputs[inputCount].mi.mouseData = 0;
-        inputs[inputCount].mi.dwExtraInfo = 0;
-        inputs[inputCount].mi.time = 0;
-        inputCount++;
-
-        // First click up
-        inputs[inputCount].type = INPUT_MOUSE;
-        inputs[inputCount].mi.dwFlags = upFlag;
-        inputs[inputCount].mi.dx = 0;
-        inputs[inputCount].mi.dy = 0;
-        inputs[inputCount].mi.mouseData = 0;
-        inputs[inputCount].mi.dwExtraInfo = 0;
-        inputs[inputCount].mi.time = 0;
-        inputCount++;
-
-        // Double click if requested
-        if (doubleClick) {
-            // Second click down
-            inputs[inputCount].type = INPUT_MOUSE;
-            inputs[inputCount].mi.dwFlags = downFlag;
-            inputs[inputCount].mi.dx = 0;
-            inputs[inputCount].mi.dy = 0;
-            inputs[inputCount].mi.mouseData = 0;
-            inputs[inputCount].mi.dwExtraInfo = 0;
-            inputs[inputCount].mi.time = 0;
-            inputCount++;
-
-            // Second click up
-            inputs[inputCount].type = INPUT_MOUSE;
-            inputs[inputCount].mi.dwFlags = upFlag;
-            inputs[inputCount].mi.dx = 0;
-            inputs[inputCount].mi.dy = 0;
-            inputs[inputCount].mi.mouseData = 0;
-            inputs[inputCount].mi.dwExtraInfo = 0;
-            inputs[inputCount].mi.time = 0;
-            inputCount++;
-        }
-
-        // Send all input events
-        UINT result = SendInput(inputCount, inputs, sizeof(INPUT));
-        if (result != inputCount) {
-            DWORD error = GetLastError();
-            qWarning() << "SendInput failed. Expected:" << inputCount << "Sent:" << result << "Error:" << error;
-
-            // Try to restore cursor position even if click failed
-            SetCursorPos(originalPos.x, originalPos.y);
-            return false;
-        }
-
-        // Small delay before restoring cursor
-        Sleep(25);
-
-        // Restore original cursor position
-        if (!SetCursorPos(originalPos.x, originalPos.y)) {
-            qWarning() << "Failed to restore cursor position";
-            // Don't return false here as the click was successful
-        }
-
-        qDebug() << "Click performed successfully at" << x << "," << y
-                 << (rightClick ? "(right)" : "(left)")
-                 << (doubleClick ? "(double)" : "(single)");
-
-        return true;
-
-    } catch (const std::exception& e) {
-        qCritical() << "Exception in performWindowsClick:" << e.what();
-        return false;
-    } catch (...) {
-        qCritical() << "Unknown exception in performWindowsClick";
+    if (x < 0 || y < 0 || x >= screenWidth || y >= screenHeight) {
+        qWarning() << "Click coordinates out of screen bounds:" << x << "," << y;
         return false;
     }
+
+    // Save original cursor position
+    POINT originalPos;
+    if (!GetCursorPos(&originalPos)) {
+        DWORD error = GetLastError();
+        qWarning() << "Failed to get cursor position. Error:" << error;
+        return false;
+    }
+
+    // Use modern SendInput instead of deprecated mouse_event
+    INPUT inputs[4] = {}; // Max 4 for double-click
+    int inputCount = 0;
+
+    // Move cursor to target position first
+    if (!SetCursorPos(x, y)) {
+        DWORD error = GetLastError();
+        qWarning() << "Failed to set cursor position. Error:" << error;
+        return false;
+    }
+
+    // Small delay to ensure cursor movement
+    Sleep(10);
+
+    // Prepare mouse input events
+    DWORD downFlag = rightClick ? MOUSEEVENTF_RIGHTDOWN : MOUSEEVENTF_LEFTDOWN;
+    DWORD upFlag = rightClick ? MOUSEEVENTF_RIGHTUP : MOUSEEVENTF_LEFTUP;
+
+    // First click down
+    inputs[inputCount].type = INPUT_MOUSE;
+    inputs[inputCount].mi.dwFlags = downFlag;
+    inputCount++;
+
+    // First click up
+    inputs[inputCount].type = INPUT_MOUSE;
+    inputs[inputCount].mi.dwFlags = upFlag;
+    inputCount++;
+
+    // Double click if requested
+    if (doubleClick) {
+        // Second click down
+        inputs[inputCount].type = INPUT_MOUSE;
+        inputs[inputCount].mi.dwFlags = downFlag;
+        inputCount++;
+
+        // Second click up
+        inputs[inputCount].type = INPUT_MOUSE;
+        inputs[inputCount].mi.dwFlags = upFlag;
+        inputCount++;
+    }
+
+    // Send all input events
+    UINT result = SendInput(inputCount, inputs, sizeof(INPUT));
+    if (result != inputCount) {
+        DWORD error = GetLastError();
+        qWarning() << "SendInput failed. Expected:" << inputCount << "Sent:" << result << "Error:" << error;
+
+        // Try to restore cursor position even if click failed
+        SetCursorPos(originalPos.x, originalPos.y);
+        return false;
+    }
+
+    // Small delay before restoring cursor
+    Sleep(25);
+
+    // Restore original cursor position
+    if (!SetCursorPos(originalPos.x, originalPos.y)) {
+        qWarning() << "Failed to restore cursor position";
+        // Don't return false here as the click was successful
+    }
+
+    qDebug() << "Click performed successfully at" << x << "," << y
+             << (rightClick ? "(right)" : "(left)")
+             << (doubleClick ? "(double)" : "(single)");
+
+    return true;
 }

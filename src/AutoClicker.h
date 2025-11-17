@@ -6,9 +6,6 @@
 #include <QElapsedTimer>
 #include <QPoint>
 
-class QValidatorPrivate;
-class HotkeySettingsTab;
-
 class AutoClicker : public QObject {
     Q_OBJECT
 
@@ -22,7 +19,7 @@ public:
     void setPosition(const QPoint& pos);
     void setDoubleClick(bool enabled);
     void setRightClick(bool enabled);
-    bool useDynamicPosition() const { return m_useDynamicPosition; } // Add this
+    bool useDynamicPosition() const { return m_useDynamicPosition; }
 
     // Control methods
     bool start();
@@ -58,7 +55,7 @@ private:
     bool m_doubleClick = false;
     bool m_rightClick = false;
     bool m_isRunning = false;
-    bool m_useDynamicPosition = true; // Add this
+    bool m_useDynamicPosition = true;
 
     qint64 m_duration = -1;
     QElapsedTimer m_runtime;

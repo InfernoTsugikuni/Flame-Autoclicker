@@ -2,32 +2,21 @@
 #define CONTENT_H
 
 #include <QWidget>
-#include <QLineEdit>
-#include <QPushButton>
-#include <QCheckBox>
-#include <QLabel>
-#include <QDialog>
-#include <QEvent>
-#include <QMouseEvent>
-#include <QKeySequence>
 #include <QPoint>
-#include <QScreen>
-#include <QApplication>
-#include <QRegularExpression>
-#include <QPalette>
-#include <QTabWidget>
 #include <windows.h>
 #include "AutoClicker.h"
 #include "hotkeysettingstab.h"
 
-class InputWidget : public QWidget {
+class QLineEdit;
+class QPushButton;
+class QCheckBox;
+class QLabel;
+
+class MainContent : public QWidget {
     Q_OBJECT
 public:
-    explicit InputWidget(QWidget* parent = nullptr);
-    ~InputWidget();
-
-    QPushButton* hotkeyBut;  // Public access
-    QPushButton* clickBut;
+    explicit MainContent(QWidget* parent = nullptr);
+    ~MainContent();
 
 signals:
     void hotkeyChanged(const QKeySequence& sequence);
@@ -43,61 +32,67 @@ private slots:
     void onHotkeySaved(const Hotkey &hotkey);
 
 private:
-    // Private helper functions
+    // Helper functions
+    void setupUi();
+    void setupStyles();
+    void setupConnections();
+    void setupValidators();
+
     qint64 calculateTotalMs() const;
+    qint64 calculateDurationMs() const;
     int validateClicksInput() const;
     void updateStatus(const QString& message);
     bool startAutoclicker();
     void stopAutoclicker();
     void registerWindowsHotkey(const Hotkey &hotkey);
     void unregisterWindowsHotkey();
+    bool isPositionValid(const QPoint& pos) const;
 
-    // Helper methods for safer widget operations
+    // Widget helpers
     void applyWidgetStyle(QWidget* widget, const QString& style);
     void setWidgetPlaceholder(QLineEdit* lineEdit, const QString& placeholder);
     void setWidgetCursor(QWidget* widget, Qt::CursorShape cursor);
-    void setupInputValidation();
-    void validateNumericInput(QLineEdit* lineEdit, const QString& text, int min, int max);
-    bool isPositionValid(const QPoint& pos) const;
-    void setupLayout();
 
-    // UI Elements - all properly initialized in constructor
-    QLineEdit* hours;
-    QLineEdit* mins;
-    QLineEdit* secs;
-    QLineEdit* ms;
-    QLineEdit* clicks;
-    QLineEdit* posInp;
-    QLineEdit* durationHours;
-    QLineEdit* durationMins;
-    QLineEdit* durationSecs;
-    QPushButton* posSet;
-    QPushButton* posPick;
-    QCheckBox* doubleClickCheckbox;
-    QLabel* doubleClickLabel;
-    QCheckBox* rightClickCheckbox;
-    QLabel* rightClickLabel;
-    QLabel* status;
-    QLabel* interval;
-    QLabel* clicksLab;
-    QLabel* press;
-    QLabel* posLab;
-    QLabel* durationLab;
+    // UI Elements
+    QLineEdit* hours = nullptr;
+    QLineEdit* mins = nullptr;
+    QLineEdit* secs = nullptr;
+    QLineEdit* ms = nullptr;
+    QLineEdit* clicks = nullptr;
+    QLineEdit* posInp = nullptr;
+    QLineEdit* durationHours = nullptr;
+    QLineEdit* durationMins = nullptr;
+    QLineEdit* durationSecs = nullptr;
 
-    // Hotkey settings dialog
-    QDialog* hotkeyDialog;
-    HotkeySettingsTab* hotkeySettingsTab;
+    QPushButton* clickBut = nullptr;
+    QPushButton* hotkeyBut = nullptr;
+    QPushButton* posSet = nullptr;
+    QPushButton* posPick = nullptr;
+
+    QCheckBox* doubleClickCheckbox = nullptr;
+    QLabel* doubleClickLabel = nullptr;
+    QCheckBox* rightClickCheckbox = nullptr;
+    QLabel* rightClickLabel = nullptr;
+
+    QLabel* status = nullptr;
+    QLabel* interval = nullptr;
+    QLabel* clicksLab = nullptr;
+    QLabel* press = nullptr;
+    QLabel* posLab = nullptr;
+    QLabel* durationLab = nullptr;
 
     // Business logic
     AutoClicker m_autoclicker;
     QPoint m_targetPos;
     Hotkey m_currentHotkey;
-    bool m_isActive;
-    bool m_hotkeyRegistered;
-    static const int HOTKEY_ID = 1;
-    qint64 calculateDurationMs() const;
+    bool m_isActive = false;
+    bool m_hotkeyRegistered = false;
+
+    // Style strings for the main button
     QString m_startButtonStyle;
     QString m_stopButtonStyle;
+
+    static constexpr int HOTKEY_ID = 1;
 };
 
 #endif // CONTENT_H

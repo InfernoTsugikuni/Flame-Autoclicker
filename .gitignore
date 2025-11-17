@@ -1,0 +1,38 @@
+# Build folders
+build/
+out/
+.vs/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+
+# Qt Creator
+*.user
+*.user.*
+*.pro.user
+*.pro.user.*
+.qtcreator/
+
+# CMake Presets cache (optional)
+CMakePresets.json.user
+
+# Backup/Temp files
+*.autosave
+*.swp
+*.swo
+*.bak
+*.tmp
+
+# Logs
+*.log
+
+# Generated files (optional)
+Makefile
+compile_commands.json
+
+# Windows junk
+Thumbs.db
+desktop.ini
+
+# macOS (if ever zipped there)
+.DS_Store

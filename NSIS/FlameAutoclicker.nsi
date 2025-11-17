@@ -1,4 +1,4 @@
-; NSIS Script for FlameAutoclicker with Dynamic Admin/User Installation Support
+; NSIS Script for FlameAutoclicker
 !define PRODUCT_NAME "FlameAutoclicker"
 !define PRODUCT_VERSION "1.0.2"
 !define PRODUCT_PUBLISHER "Inferno Tsugikuni"
@@ -8,7 +8,7 @@
 !define PRODUCT_UNINST_ROOT_KEY "HKLM"
 !define PRODUCT_USER_UNINST_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}"
 
-; Modern UI
+; UI
 !include "MUI2.nsh"
 !include "LogicLib.nsh"
 !include "FileFunc.nsh"

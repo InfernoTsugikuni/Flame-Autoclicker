@@ -1,0 +1,8 @@
+<RCC>
+    <qresource prefix="/">
+        <file>titlebar/Close.png</file>
+        <file>titlebar/CloseHover.png</file>
+        <file>titlebar/Minimize.png</file>
+        <file>titlebar/MinimizeHover.png</file>
+    </qresource>
+</RCC>

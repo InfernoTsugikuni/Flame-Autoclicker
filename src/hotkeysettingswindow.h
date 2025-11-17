@@ -1,11 +1,10 @@
 #ifndef HOTKEYSETTINGSWINDOW_H
 #define HOTKEYSETTINGSWINDOW_H
 
-#include <QWidget>
-#include "TitleBar.h"
+#include "QtBlaze.h"
 #include "hotkeysettingstab.h"
 
-class HotkeySettingsWindow : public QWidget
+class HotkeySettingsWindow : public CustomWindowBase
 {
     Q_OBJECT
 
@@ -15,13 +14,11 @@ public:
 signals:
     void hotkeySaved(const Hotkey &hotkey);
 
-protected:
-    void paintEvent(QPaintEvent *event) override;
-
 private:
     void setupWindow();
 
-    TitleBar *titleBar;
+    static WindowConfig createConfig();
+
     HotkeySettingsTab *settingsTab;
 };
 

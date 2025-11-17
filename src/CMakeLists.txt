@@ -29,18 +29,22 @@ set(PROJECT_SOURCES
     AutoClicker.cpp
     hotkeysettingstab.h
     hotkeysettingstab.cpp
+    QtBlaze.h
 )
 
 # Copy assets to build directory
 file(COPY ${CMAKE_SOURCE_DIR}/assets DESTINATION ${CMAKE_BINARY_DIR})
 
 # Create main executable
-qt_add_executable(FlameAutoclicker MANUAL_FINALIZATION
-    ${PROJECT_SOURCES}
-    hotkeysettingswindow.h
-    hotkeysettingswindow.cpp
-    assets/icon.rc
-)
+if (QT_VERSION_MAJOR GREATER_EQUAL 6)
+    qt_add_executable(FlameAutoclicker MANUAL_FINALIZATION ${PROJECT_SOURCES}
+        hotkeysettingswindow.h
+        hotkeysettingswindow.cpp
+        resources/icon.rc
+        assets/assets.qrc)
+else()
+    add_executable(FlameAutoclicker ${PROJECT_SOURCES})
+endif()
 
 # Link Qt libraries using keyword signature for Qt6 compatibility
 target_link_libraries(FlameAutoclicker PRIVATE

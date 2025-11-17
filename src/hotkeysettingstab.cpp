@@ -249,12 +249,6 @@ void HotkeySettingsTab::createModifierSection(QVBoxLayout *mainLayout) {
     modLayout->addWidget(altCheck, 1, 0);
     modLayout->addWidget(winCheck, 1, 1);
 
-    // Add helpful text
-    QLabel *modHelpText = new QLabel("Select one or more modifier keys");
-    modHelpText->setStyleSheet("QLabel { color: #888888; font-size: 11px; font-style: italic; margin-top: 8px; }");
-    modHelpText->setAlignment(Qt::AlignCenter);
-    modLayout->addWidget(modHelpText, 2, 0, 1, 2);
-
     modGroup->setLayout(modLayout);
     mainLayout->addWidget(modGroup);
 }
@@ -415,9 +409,10 @@ void HotkeySettingsTab::setupMainKeys() {
         keyCombo->addItem(pair.first);
     }
 
-    // Set Print Screen as default (index depends on position in map)
+    // Set F6 as default
     for (int i = 0; i < keyCombo->count(); ++i) {
-        if (keyCombo->itemText(i) == "Print Screen") {
+        // MODIFICATION: Changed "Print Screen" to "F6"
+        if (keyCombo->itemText(i) == "F6") {
             keyCombo->setCurrentIndex(i);
             break;
         }
@@ -425,9 +420,9 @@ void HotkeySettingsTab::setupMainKeys() {
 }
 
 void HotkeySettingsTab::setDefaultValues() {
-    // Set default hotkey: Ctrl + Alt + Print Screen
-    ctrlCheck->setChecked(true);
-    altCheck->setChecked(true);
+    // MODIFICATION: Set all modifiers to false by default for F6
+    ctrlCheck->setChecked(false);
+    altCheck->setChecked(false);
     shiftCheck->setChecked(false);
     winCheck->setChecked(false);
 }
@@ -444,14 +439,14 @@ void HotkeySettingsTab::updatePreview() {
     }
 
     QString hotkeyText = parts.join(" + ");
+
+    // MODIFICATION: Relaxed validation. Any selected main key is valid.
     if (hotkeyText.isEmpty()) {
-        hotkeyText = "No hotkey selected";
-        statusLabel->setText("⚠ Please select at least one modifier and a main key");
-        statusLabel->setStyleSheet("QLabel { color: #FFC107; font-size: 11px; }");
-    } else if (parts.size() < 2) {
-        statusLabel->setText("⚠ Recommended: Use at least one modifier key");
+        hotkeyText = "No main key selected";
+        statusLabel->setText("⚠ Please select a main key");
         statusLabel->setStyleSheet("QLabel { color: #FFC107; font-size: 11px; }");
     } else {
+        // Any combination (even a single key) is now considered valid
         statusLabel->setText("✓ Valid hotkey combination");
         statusLabel->setStyleSheet("QLabel { color: #4CAF50; font-size: 11px; }");
     }
@@ -477,9 +472,9 @@ Hotkey HotkeySettingsTab::getCurrentHotkey() const {
 void HotkeySettingsTab::onSaveClicked() {
     Hotkey hk = getCurrentHotkey();
 
-    // Validate hotkey
-    if (!hk.ctrl && !hk.shift && !hk.alt && !hk.win) {
-        statusLabel->setText("⚠ Please select at least one modifier key");
+    // MODIFICATION: Removed modifier check. Only check if a main key is selected.
+    if (hk.keyCode == 0) {
+        statusLabel->setText("⚠ Please select a main key");
         statusLabel->setStyleSheet("QLabel { color: #dc3545; font-size: 11px; }");
         return;
     }
@@ -497,6 +492,13 @@ void HotkeySettingsTab::onSaveClicked() {
 }
 
 void HotkeySettingsTab::onResetClicked() {
+    // MODIFICATION: Also need to set the key back to F6 on reset
     setDefaultValues();
+    for (int i = 0; i < keyCombo->count(); ++i) {
+        if (keyCombo->itemText(i) == "F6") {
+            keyCombo->setCurrentIndex(i);
+            break;
+        }
+    }
     updatePreview();
 }
