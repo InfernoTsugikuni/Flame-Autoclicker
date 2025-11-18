@@ -44,7 +44,7 @@ AutoClicker::~AutoClicker() {
 
 void AutoClicker::setInterval(qint64 ms) {
     // Conservative bounds checking
-    const int MIN_INTERVAL = 5;  // 10ms minimum to prevent system overload
+    const int MIN_INTERVAL = 5;  // 5ms minimum to prevent system overload
     const int MAX_INTERVAL = 3600000; // 1 hour max
 
     // Ensure we don't overflow when casting
@@ -106,10 +106,26 @@ bool AutoClicker::start() {
         m_runtime.start();
     }
 
-    if (m_timer.interval() < 10) {
+    if (m_timer.interval() < 5) {
         qWarning() << "Cannot start: Interval too low" << m_timer.interval();
-        emit error("Click interval too fast (minimum 10ms)");
+        emit error("Click interval too fast (minimum 5ms)");
         return false;
+    }
+
+    // m_position shall remain (-1, -1) if we are using dynamic positioning
+    if (m_useDynamicPosition) {
+        m_position = QPoint(-1, -1);
+        qDebug() << "Dynamic position active: Clicking at cursor location";
+    } else {
+        // Validate screen bounds only if we have a fixed position
+        int screenWidth = GetSystemMetrics(SM_CXSCREEN);
+        int screenHeight = GetSystemMetrics(SM_CYSCREEN);
+
+        if (m_position.x() >= screenWidth || m_position.y() >= screenHeight) {
+            qWarning() << "Cannot start: Position outside screen bounds";
+            emit error("Click position outside screen");
+            return false;
+        }
     }
 
     // Validate screen bounds
@@ -199,23 +215,8 @@ void AutoClicker::performClick() {
         return;
     }
 
-    // REMOVED: try-catch block
-
-    QPoint clickPos;
-    if (m_useDynamicPosition) {
-        // Get current cursor position
-        POINT pt;
-        if (!GetCursorPos(&pt)) {
-            DWORD error = GetLastError();
-            qWarning() << "Failed to get cursor position. Error:" << error;
-            stop();
-            emit this->error("Failed to get cursor position");
-            return;
-        }
-        clickPos = QPoint(pt.x, pt.y);
-    } else {
-        clickPos = m_position;
-    }
+    // Use the position that was set (either fixed or captured at start)
+    QPoint clickPos = m_position;
 
     qDebug() << "Performing click at:" << clickPos << "Remaining:" << m_remainingClicks;
 
@@ -238,89 +239,76 @@ void AutoClicker::performClick() {
 }
 
 bool AutoClicker::performWindowsClick(int x, int y, bool rightClick, bool doubleClick) {
-    // REMOVED: try-catch block
 
-    // Validate coordinates first
-    int screenWidth = GetSystemMetrics(SM_CXSCREEN);
-    int screenHeight = GetSystemMetrics(SM_CYSCREEN);
+    // If x and y are -1, we click EXACTLY where the mouse is, without moving it.
+    bool isDynamicClick = (x == -1 && y == -1);
 
-    if (x < 0 || y < 0 || x >= screenWidth || y >= screenHeight) {
-        qWarning() << "Click coordinates out of screen bounds:" << x << "," << y;
-        return false;
+    // Only validate bounds if we are moving the mouse
+    if (!isDynamicClick) {
+        int screenWidth = GetSystemMetrics(SM_CXSCREEN);
+        int screenHeight = GetSystemMetrics(SM_CYSCREEN);
+
+        if (x < 0 || y < 0 || x >= screenWidth || y >= screenHeight) {
+            qWarning() << "Click coordinates out of screen bounds:" << x << "," << y;
+            return false;
+        }
     }
 
-    // Save original cursor position
     POINT originalPos;
-    if (!GetCursorPos(&originalPos)) {
-        DWORD error = GetLastError();
-        qWarning() << "Failed to get cursor position. Error:" << error;
-        return false;
+    // Only save original position if we intend to move the mouse
+    if (!isDynamicClick) {
+        if (!GetCursorPos(&originalPos)) {
+            return false;
+        }
+
+        // Move cursor to target position
+        if (!SetCursorPos(x, y)) {
+            return false;
+        }
+
+        // Small delay ONLY if we moved the mouse (reduces lag for dynamic clicks)
+        Sleep(1);
     }
-
-    // Use modern SendInput instead of deprecated mouse_event
-    INPUT inputs[4] = {}; // Max 4 for double-click
-    int inputCount = 0;
-
-    // Move cursor to target position first
-    if (!SetCursorPos(x, y)) {
-        DWORD error = GetLastError();
-        qWarning() << "Failed to set cursor position. Error:" << error;
-        return false;
-    }
-
-    // Small delay to ensure cursor movement
-    Sleep(10);
 
     // Prepare mouse input events
+    INPUT inputs[4] = {};
+    int inputCount = 0;
+
     DWORD downFlag = rightClick ? MOUSEEVENTF_RIGHTDOWN : MOUSEEVENTF_LEFTDOWN;
     DWORD upFlag = rightClick ? MOUSEEVENTF_RIGHTUP : MOUSEEVENTF_LEFTUP;
 
-    // First click down
+    // First click
     inputs[inputCount].type = INPUT_MOUSE;
     inputs[inputCount].mi.dwFlags = downFlag;
     inputCount++;
 
-    // First click up
     inputs[inputCount].type = INPUT_MOUSE;
     inputs[inputCount].mi.dwFlags = upFlag;
     inputCount++;
 
     // Double click if requested
     if (doubleClick) {
-        // Second click down
         inputs[inputCount].type = INPUT_MOUSE;
         inputs[inputCount].mi.dwFlags = downFlag;
         inputCount++;
 
-        // Second click up
         inputs[inputCount].type = INPUT_MOUSE;
         inputs[inputCount].mi.dwFlags = upFlag;
         inputCount++;
     }
 
-    // Send all input events
     UINT result = SendInput(inputCount, inputs, sizeof(INPUT));
-    if (result != inputCount) {
-        DWORD error = GetLastError();
-        qWarning() << "SendInput failed. Expected:" << inputCount << "Sent:" << result << "Error:" << error;
 
-        // Try to restore cursor position even if click failed
+    // Only restore cursor if we moved it
+    if (!isDynamicClick) {
+        // Small delay before restoring
+        Sleep(1); // Reduced from 25 to 1 to help speed
         SetCursorPos(originalPos.x, originalPos.y);
+    }
+
+    if (result != inputCount) {
         return false;
     }
-
-    // Small delay before restoring cursor
-    Sleep(25);
-
-    // Restore original cursor position
-    if (!SetCursorPos(originalPos.x, originalPos.y)) {
-        qWarning() << "Failed to restore cursor position";
-        // Don't return false here as the click was successful
-    }
-
-    qDebug() << "Click performed successfully at" << x << "," << y
-             << (rightClick ? "(right)" : "(left)")
-             << (doubleClick ? "(double)" : "(single)");
 
     return true;
 }

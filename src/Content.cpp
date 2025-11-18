@@ -77,7 +77,7 @@ QString hotkeyString(const Hotkey& hotkey) {
 
 MainContent::MainContent(QWidget* parent)
     : QWidget(parent)
-    , m_currentHotkey({true, true, false, false, VK_SNAPSHOT}) // Default: Ctrl+Alt+PrtSc
+    , m_currentHotkey({false, false, false, false, VK_F6}) // Default: F6
     , m_isActive(false)
     , m_hotkeyRegistered(false)
     , m_targetPos(0, 0)
@@ -142,6 +142,9 @@ void MainContent::setupUi() {
     setWidgetPlaceholder(durationHours, "Hours");
     setWidgetPlaceholder(durationMins, "Minutes");
     setWidgetPlaceholder(durationSecs, "Seconds");
+
+    // Initialize text by default
+    ms->setText("5");
 
     // Set cursors
     setWidgetCursor(rightClickCheckbox, Qt::PointingHandCursor);
@@ -573,7 +576,10 @@ qint64 MainContent::calculateTotalMs() const {
     if (hours) totalMs += hours->text().toLongLong() * 3600 * 1000;
     if (mins) totalMs += mins->text().toLongLong() * 60 * 1000;
     if (secs) totalMs += secs->text().toLongLong() * 1000;
+
+    // If ms is empty, default to 0 here, but logic elsewhere enforces 5
     if (ms) totalMs += ms->text().toLongLong();
+
     return totalMs;
 }
 
