@@ -19,6 +19,9 @@ public:
     void setPosition(const QPoint& pos);
     void setDoubleClick(bool enabled);
     void setRightClick(bool enabled);
+
+    // Public setter for dynamic position control
+    void setUseDynamicPosition(bool enabled) { m_useDynamicPosition = enabled; }
     bool useDynamicPosition() const { return m_useDynamicPosition; }
 
     // Control methods

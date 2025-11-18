@@ -121,6 +121,7 @@ void MainContent::setupUi() {
     hotkeyBut = new QPushButton("Change Hotkey", this);
     posSet = new QPushButton("Set Position", this);
     posPick = new QPushButton("Pick Position", this);
+    posClear = new QPushButton("Clear/Dynamic", this); // <--- NEW BUTTON
     doubleClickCheckbox = new QCheckBox(this);
     doubleClickLabel = new QLabel("Double Click", this);
     rightClickCheckbox = new QCheckBox(this);
@@ -143,7 +144,7 @@ void MainContent::setupUi() {
     setWidgetPlaceholder(durationMins, "Minutes");
     setWidgetPlaceholder(durationSecs, "Seconds");
 
-    // Initialize text by default
+    // Initialize ms text to 5 by default (User Request)
     ms->setText("5");
 
     // Set cursors
@@ -151,6 +152,7 @@ void MainContent::setupUi() {
     setWidgetCursor(doubleClickCheckbox, Qt::PointingHandCursor);
     setWidgetCursor(posSet, Qt::PointingHandCursor);
     setWidgetCursor(posPick, Qt::PointingHandCursor);
+    setWidgetCursor(posClear, Qt::PointingHandCursor); // <--- NEW CURSOR
     setWidgetCursor(clickBut, Qt::PointingHandCursor);
     setWidgetCursor(hotkeyBut, Qt::PointingHandCursor);
 
@@ -186,6 +188,7 @@ void MainContent::setupUi() {
     QHBoxLayout* posButsLayout = new QHBoxLayout;
     posButsLayout->addWidget(posSet);
     posButsLayout->addWidget(posPick);
+    posButsLayout->addWidget(posClear); // <--- ADDED BUTTON
     posButsLayout->setSpacing(10);
 
     QHBoxLayout* posInpLayout = new QHBoxLayout;
@@ -249,6 +252,10 @@ void MainContent::setupStyles() {
         }
     )";
 
+    // Apply buttonStyle to the new clear button
+    QString secondaryButtonStyle = buttonStyle;
+    secondaryButtonStyle.replace("#ff6b00", "#555"); // Use a neutral color for secondary buttons
+
     // Store button styles as members
     m_startButtonStyle = R"(
         QPushButton {
@@ -262,15 +269,6 @@ void MainContent::setupStyles() {
     m_stopButtonStyle = m_startButtonStyle;
     m_stopButtonStyle.replace("#ff6b00", "#dc3545"); // Red for stop
     m_stopButtonStyle.replace("#e65c00", "#c82333"); // Darker red for hover
-
-    const QString secondaryButtonStyle = R"(
-        QPushButton {
-            padding: 9px; border-radius: 5px; background-color: #2d2d2d;
-            color: #919191; font-size: 14px; border: 1px solid #555;
-        }
-        QPushButton:hover { background-color: #3f3f3f; color: #fff; }
-        QPushButton:disabled { background-color: #1a1a1a; color: #666; }
-    )";
 
     const QString sectionLabelStyle = "font-weight: bold; color: #bbb; font-size: 16px;";
     const QString statusLabelStyle = "color: #aaa; font-size: 14px;";
@@ -298,8 +296,9 @@ void MainContent::setupStyles() {
     applyWidgetStyle(durationSecs, inputStyle);
     applyWidgetStyle(doubleClickCheckbox, checkboxStyle);
     applyWidgetStyle(rightClickCheckbox, checkboxStyle);
-    applyWidgetStyle(posSet, buttonStyle);
-    applyWidgetStyle(posPick, buttonStyle);
+    applyWidgetStyle(posSet, secondaryButtonStyle);
+    applyWidgetStyle(posPick, secondaryButtonStyle);
+    applyWidgetStyle(posClear, secondaryButtonStyle);
     applyWidgetStyle(clickBut, m_startButtonStyle);
     applyWidgetStyle(hotkeyBut, secondaryButtonStyle);
     applyWidgetStyle(interval, sectionLabelStyle);
@@ -358,6 +357,7 @@ void MainContent::setupConnections() {
     if (hotkeyBut) connect(hotkeyBut, &QPushButton::clicked, this, &MainContent::updateHotkey);
     if (posSet) connect(posSet, &QPushButton::clicked, this, &MainContent::setPositionFromInput);
     if (posPick) connect(posPick, &QPushButton::clicked, this, &MainContent::pickPositionFromCursor);
+    if (posClear) connect(posClear, &QPushButton::clicked, this, &MainContent::clearPosition); // <--- NEW CONNECTION
 }
 
 bool MainContent::nativeEvent(const QByteArray &eventType, void *message, qintptr *result) {
@@ -388,14 +388,7 @@ bool MainContent::startAutoclicker() {
     const int clickCount = validateClicksInput();
     const qint64 durationMs = calculateDurationMs();
 
-    if (intervalMs <= 0) {
-        intervalMs = 5; // Default to 5ms if blank
-    }
-
-    if (intervalMs < 5) {
-        updateStatus("Error: Interval too fast (minimum 5ms for safety)");
-        return false;
-    }
+    // The minimum interval check is handled in calculateTotalMs() and AutoClicker::start()
 
     if (clickCount <= 0 && durationMs <= 0) {
         updateStatus("Info: Clicking will continue until stopped");
@@ -404,7 +397,7 @@ bool MainContent::startAutoclicker() {
     m_autoclicker.setInterval(intervalMs);
     m_autoclicker.setClickCount(clickCount);
     m_autoclicker.setDuration(durationMs);
-    m_autoclicker.setPosition(m_targetPos);
+    m_autoclicker.setPosition(m_targetPos); // Passes (-1, -1) for dynamic mode
 
     if (doubleClickCheckbox) {
         m_autoclicker.setDoubleClick(doubleClickCheckbox->isChecked());
@@ -412,6 +405,8 @@ bool MainContent::startAutoclicker() {
     if (rightClickCheckbox) {
         m_autoclicker.setRightClick(rightClickCheckbox->isChecked());
     }
+
+    // m_autoclicker.setUseDynamicPosition is set in setPositionFromInput/clearPosition
 
     if (m_autoclicker.start()) {
         m_isActive = true;
@@ -445,6 +440,12 @@ void MainContent::setPositionFromInput() {
         return;
     }
 
+    // If input is empty, default to dynamic clicking
+    if (posInp->text().trimmed().isEmpty()) {
+        clearPosition();
+        return;
+    }
+
     QString text = posInp->text().trimmed();
     if (text.isEmpty()) {
         updateStatus("Error: Please enter position coordinates");
@@ -460,22 +461,48 @@ void MainContent::setPositionFromInput() {
     }
 
     bool xOk, yOk;
+    // Multi-monitor support means coordinates can be negative, so don't check x < 0 || y < 0 here
     const int x = parts[0].trimmed().toInt(&xOk);
     const int y = parts[1].trimmed().toInt(&yOk);
 
-    if (!xOk || !yOk || x < 0 || y < 0) {
-        updateStatus("Error: Coordinates must be valid positive numbers");
+    if (!xOk || !yOk) {
+        updateStatus("Error: Coordinates must be valid numbers");
         return;
     }
 
     QPoint newPos(x, y);
+
+    // Use Qt's virtualGeometry to check against all screens
     if (!isPositionValid(newPos)) {
-        updateStatus("Warning: Position may be outside screen bounds");
+        updateStatus("Warning: Position may be outside the virtual screen bounds (all monitors)");
     }
 
     m_targetPos = newPos;
     updateStatus(QString("Position set to: %1, %2").arg(x).arg(y));
     qDebug() << "Position set manually to:" << m_targetPos;
+
+    // Turn dynamic mode OFF when a fixed position is set
+    m_autoclicker.setUseDynamicPosition(false);
+}
+
+// NEW FUNCTION: Clears position and sets to dynamic mode
+void MainContent::clearPosition() {
+    if (m_autoclicker.isActive()) {
+        updateStatus("Warning: Cannot change position while running. Stop first.");
+        return;
+    }
+
+    // Clear the visual input
+    if (posInp) {
+        posInp->clear();
+        setWidgetPlaceholder(posInp, "Current Cursor Position (Dynamic)");
+    }
+
+    // Set internal state to dynamic mode
+    m_targetPos = QPoint(-1, -1); // Signal for dynamic mode
+    m_autoclicker.setUseDynamicPosition(true);
+
+    updateStatus("Click position cleared. Using **Current Cursor Position** (Dynamic).");
 }
 
 void MainContent::pickPositionFromCursor() {
@@ -494,12 +521,15 @@ void MainContent::pickPositionFromCursor() {
     connect(pickTimer, &QTimer::timeout, this, [this, pickTimer]() {
         QPoint cursorPos = QCursor::pos();
 
-        if (cursorPos.x() >= 0 && cursorPos.y() >= 0) {
+        if (!cursorPos.isNull()) {
             m_targetPos = cursorPos;
 
             if (posInp) {
                 posInp->setText(QString("%1, %2").arg(m_targetPos.x()).arg(m_targetPos.y()));
+                setWidgetPlaceholder(posInp, "e.g., 100, 200");
             }
+
+            m_autoclicker.setUseDynamicPosition(false);
 
             updateStatus(QString("Position picked: %1, %2").arg(cursorPos.x()).arg(cursorPos.y()));
             qDebug() << "Position picked:" << m_targetPos;
@@ -519,7 +549,6 @@ void MainContent::pickPositionFromCursor() {
 
 void MainContent::updateHotkey() {
     // Create and show the HotkeySettingsWindow
-    // It's better to set 'deleteOnClose' so it cleans itself up.
     HotkeySettingsWindow *settingsWindow = new HotkeySettingsWindow(this);
     settingsWindow->setAttribute(Qt::WA_DeleteOnClose);
     connect(settingsWindow, &HotkeySettingsWindow::hotkeySaved,
@@ -571,14 +600,24 @@ void MainContent::unregisterWindowsHotkey() {
     }
 }
 
+// MODIFIED: Enforce 5ms floor
 qint64 MainContent::calculateTotalMs() const {
     qint64 totalMs = 0;
     if (hours) totalMs += hours->text().toLongLong() * 3600 * 1000;
     if (mins) totalMs += mins->text().toLongLong() * 60 * 1000;
     if (secs) totalMs += secs->text().toLongLong() * 1000;
 
-    // If ms is empty, default to 0 here, but logic elsewhere enforces 5
-    if (ms) totalMs += ms->text().toLongLong();
+    long long msValue = 0;
+    if (ms) {
+        // Read ms value, default to 0 if empty
+        msValue = ms->text().toLongLong();
+    }
+    totalMs += msValue;
+
+    // ENFORCE 5MS MINIMUM
+    if (totalMs < 5) {
+        return 5;
+    }
 
     return totalMs;
 }
@@ -640,9 +679,11 @@ void MainContent::setWidgetCursor(QWidget* widget, Qt::CursorShape cursor) {
     }
 }
 
+// MODIFIED: Use virtualGeometry to check against all monitors (multi-monitor support)
 bool MainContent::isPositionValid(const QPoint& pos) const {
     QScreen* screen = QApplication::primaryScreen();
     if (!screen) return false;
 
-    return screen->geometry().contains(pos);
+    // Use virtualGeometry() which spans all connected screens
+    return QApplication::primaryScreen()->virtualGeometry().contains(pos);
 }

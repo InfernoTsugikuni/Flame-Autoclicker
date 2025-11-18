@@ -43,8 +43,8 @@ AutoClicker::~AutoClicker() {
 }
 
 void AutoClicker::setInterval(qint64 ms) {
-    // Conservative bounds checking
-    const int MIN_INTERVAL = 5;  // 5ms minimum to prevent system overload
+    // Conservative bounds checking (User Request: 5ms minimum)
+    const int MIN_INTERVAL = 5;
     const int MAX_INTERVAL = 3600000; // 1 hour max
 
     // Ensure we don't overflow when casting
@@ -75,8 +75,9 @@ void AutoClicker::setClickCount(int count) {
 }
 
 void AutoClicker::setPosition(const QPoint& pos) {
-    if (pos.isNull() || (pos.x() < 0 && pos.y() < 0)) {
+    if (pos.x() == -1 && pos.y() == -1) {
         m_useDynamicPosition = true;
+        m_position = QPoint(-1, -1); // Explicitly store -1, -1 for dynamic signal
         qDebug() << "Position set to: current cursor (dynamic)";
     } else {
         m_position = pos;
@@ -106,39 +107,35 @@ bool AutoClicker::start() {
         m_runtime.start();
     }
 
+    // Enforce 5ms minimum
     if (m_timer.interval() < 5) {
         qWarning() << "Cannot start: Interval too low" << m_timer.interval();
         emit error("Click interval too fast (minimum 5ms)");
         return false;
     }
 
-    // m_position shall remain (-1, -1) if we are using dynamic positioning
+    // Dynamic vs Fixed Position Check (Fixing Lag & Multi-monitor support)
     if (m_useDynamicPosition) {
+        // Dynamic: Ensure position is invalid to signal `performWindowsClick` to skip movement
         m_position = QPoint(-1, -1);
-        qDebug() << "Dynamic position active: Clicking at cursor location";
+        qDebug() << "Dynamic position mode active: Clicking at live cursor location.";
     } else {
-        // Validate screen bounds only if we have a fixed position
-        int screenWidth = GetSystemMetrics(SM_CXSCREEN);
-        int screenHeight = GetSystemMetrics(SM_CYSCREEN);
+        // Validate using Virtual Screen metrics (Multi-monitor fix)
+        int vScreenX = GetSystemMetrics(SM_XVIRTUALSCREEN);
+        int vScreenY = GetSystemMetrics(SM_YVIRTUALSCREEN);
+        int vScreenWidth = GetSystemMetrics(SM_CXVIRTUALSCREEN);
+        int vScreenHeight = GetSystemMetrics(SM_CYVIRTUALSCREEN);
 
-        if (m_position.x() >= screenWidth || m_position.y() >= screenHeight) {
-            qWarning() << "Cannot start: Position outside screen bounds";
-            emit error("Click position outside screen");
+        if (m_position.x() < vScreenX || m_position.x() >= (vScreenX + vScreenWidth) ||
+            m_position.y() < vScreenY || m_position.y() >= (vScreenY + vScreenHeight)) {
+            qWarning() << "Cannot start: Position outside virtual screen bounds";
+            emit error("Click position outside virtual screen");
             return false;
         }
+        qDebug() << "Fixed position set to:" << m_position;
     }
 
-    // Validate screen bounds
-    int screenWidth = GetSystemMetrics(SM_CXSCREEN);
-    int screenHeight = GetSystemMetrics(SM_CYSCREEN);
-
-    if (m_position.x() >= screenWidth || m_position.y() >= screenHeight) {
-        qWarning() << "Cannot start: Position outside screen bounds";
-        emit error("Click position outside screen");
-        return false;
-    }
-
-    // Test Windows API access with better error checking
+    // Test Windows API access
     POINT pt;
     if (!GetCursorPos(&pt)) {
         DWORD lastError = GetLastError();
@@ -215,7 +212,7 @@ void AutoClicker::performClick() {
         return;
     }
 
-    // Use the position that was set (either fixed or captured at start)
+    // Use the position that was set (either fixed or the dynamic signal -1, -1)
     QPoint clickPos = m_position;
 
     qDebug() << "Performing click at:" << clickPos << "Remaining:" << m_remainingClicks;
@@ -238,77 +235,105 @@ void AutoClicker::performClick() {
     emit clickPerformed(clickPos);
 }
 
+// LAG FIX IMPLEMENTATION
 bool AutoClicker::performWindowsClick(int x, int y, bool rightClick, bool doubleClick) {
+    // Dynamic detection: (-1, -1) is the signal to click where the mouse is now.
+    bool isDynamic = (x == -1 && y == -1);
 
-    // If x and y are -1, we click EXACTLY where the mouse is, without moving it.
-    bool isDynamicClick = (x == -1 && y == -1);
+    POINT originalPos = {0, 0};
 
-    // Only validate bounds if we are moving the mouse
-    if (!isDynamicClick) {
-        int screenWidth = GetSystemMetrics(SM_CXSCREEN);
-        int screenHeight = GetSystemMetrics(SM_CYSCREEN);
+    if (!isDynamic) {
+        // FIXED POSITION LOGIC: Move cursor
 
-        if (x < 0 || y < 0 || x >= screenWidth || y >= screenHeight) {
-            qWarning() << "Click coordinates out of screen bounds:" << x << "," << y;
+        // Validation using Virtual Screen metrics (Multi-monitor fix)
+        int vScreenX = GetSystemMetrics(SM_XVIRTUALSCREEN);
+        int vScreenY = GetSystemMetrics(SM_YVIRTUALSCREEN);
+        int vScreenWidth = GetSystemMetrics(SM_CXVIRTUALSCREEN);
+        int vScreenHeight = GetSystemMetrics(SM_CYVIRTUALSCREEN);
+
+        if (x < vScreenX || y < vScreenY ||
+            x >= (vScreenX + vScreenWidth) || y >= (vScreenY + vScreenHeight)) {
+            qWarning() << "Click coordinates out of virtual screen bounds:" << x << "," << y;
             return false;
         }
-    }
 
-    POINT originalPos;
-    // Only save original position if we intend to move the mouse
-    if (!isDynamicClick) {
+        // Save original cursor position
         if (!GetCursorPos(&originalPos)) {
+            DWORD error = GetLastError();
+            qWarning() << "Failed to get cursor position. Error:" << error;
             return false;
         }
 
         // Move cursor to target position
         if (!SetCursorPos(x, y)) {
+            DWORD error = GetLastError();
+            qWarning() << "Failed to set cursor position. Error:" << error;
             return false;
         }
 
-        // Small delay ONLY if we moved the mouse (reduces lag for dynamic clicks)
+        // Reduced delay after moving the cursor (LAG FIX)
         Sleep(1);
     }
 
-    // Prepare mouse input events
-    INPUT inputs[4] = {};
+    // Use modern SendInput instead of deprecated mouse_event
+    INPUT inputs[4] = {}; // Max 4 for double-click
     int inputCount = 0;
 
+    // Prepare mouse input events
     DWORD downFlag = rightClick ? MOUSEEVENTF_RIGHTDOWN : MOUSEEVENTF_LEFTDOWN;
     DWORD upFlag = rightClick ? MOUSEEVENTF_RIGHTUP : MOUSEEVENTF_LEFTUP;
 
-    // First click
+    // First click down
     inputs[inputCount].type = INPUT_MOUSE;
     inputs[inputCount].mi.dwFlags = downFlag;
     inputCount++;
 
+    // First click up
     inputs[inputCount].type = INPUT_MOUSE;
     inputs[inputCount].mi.dwFlags = upFlag;
     inputCount++;
 
     // Double click if requested
     if (doubleClick) {
+        // Second click down
         inputs[inputCount].type = INPUT_MOUSE;
         inputs[inputCount].mi.dwFlags = downFlag;
         inputCount++;
 
+        // Second click up
         inputs[inputCount].type = INPUT_MOUSE;
         inputs[inputCount].mi.dwFlags = upFlag;
         inputCount++;
     }
 
+    // Send all input events
+    // If isDynamic is true, this click happens at the current cursor position,
+    // and no movement/restore is needed, fixing the lag.
     UINT result = SendInput(inputCount, inputs, sizeof(INPUT));
-
-    // Only restore cursor if we moved it
-    if (!isDynamicClick) {
-        // Small delay before restoring
-        Sleep(1); // Reduced from 25 to 1 to help speed
-        SetCursorPos(originalPos.x, originalPos.y);
-    }
-
     if (result != inputCount) {
+        DWORD error = GetLastError();
+        qWarning() << "SendInput failed. Expected:" << inputCount << "Sent:" << result << "Error:" << error;
+
+        // Restore cursor position ONLY if we moved it
+        if (!isDynamic) {
+            SetCursorPos(originalPos.x, originalPos.y);
+        }
         return false;
     }
+
+    // Restore cursor ONLY if we moved it (Fixed position)
+    if (!isDynamic) {
+        // Reduced delay before restoring cursor (LAG FIX)
+        Sleep(1);
+        // Restore original cursor position
+        if (!SetCursorPos(originalPos.x, originalPos.y)) {
+            qWarning() << "Failed to restore cursor position";
+        }
+    }
+
+    qDebug() << "Click performed successfully at" << (isDynamic ? "live cursor" : QString::number(x) + "," + QString::number(y))
+             << (rightClick ? "(right)" : "(left)")
+             << (doubleClick ? "(double)" : "(single)");
 
     return true;
 }

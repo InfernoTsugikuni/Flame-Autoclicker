@@ -28,6 +28,7 @@ private slots:
     void toggleAutoclicker();
     void setPositionFromInput();
     void pickPositionFromCursor();
+    void clearPosition();
     void updateHotkey();
     void onHotkeySaved(const Hotkey &hotkey);
 
@@ -42,6 +43,7 @@ private:
     qint64 calculateDurationMs() const;
     int validateClicksInput() const;
     void updateStatus(const QString& message);
+    void updateStatus(const QString& message, const QColor& color);
     bool startAutoclicker();
     void stopAutoclicker();
     void registerWindowsHotkey(const Hotkey &hotkey);
@@ -68,6 +70,7 @@ private:
     QPushButton* hotkeyBut = nullptr;
     QPushButton* posSet = nullptr;
     QPushButton* posPick = nullptr;
+    QPushButton* posClear = nullptr;
 
     QCheckBox* doubleClickCheckbox = nullptr;
     QLabel* doubleClickLabel = nullptr;
