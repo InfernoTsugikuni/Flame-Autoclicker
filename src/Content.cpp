@@ -80,7 +80,7 @@ MainContent::MainContent(QWidget* parent)
     , m_currentHotkey({false, false, false, false, VK_F6}) // Default: F6
     , m_isActive(false)
     , m_hotkeyRegistered(false)
-    , m_targetPos(0, 0)
+    , m_targetPos(-1, -1)
 {
     setupUi();
     setupStyles();
